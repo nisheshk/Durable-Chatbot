@@ -1,9 +1,10 @@
 import os
+import asyncio
 import psycopg2
 from psycopg2 import pool
 from typing import List, Tuple, Dict, Any, Optional
 from temporalio import activity
-from openai import OpenAI
+from openai import AsyncOpenAI
 from databricks.vector_search.client import VectorSearchClient
 from config_cloud import cloud_config
 from shared.models import (
@@ -40,16 +41,16 @@ class OpenAIActivities:
         # Use cloud configuration for API keys and settings
         if not cloud_config.OPENAI_API_KEY:
             raise ValueError("OPENAI_API_KEY environment variable is required")
-        self.client = OpenAI(api_key=cloud_config.OPENAI_API_KEY)
+        self.client = AsyncOpenAI(api_key=cloud_config.OPENAI_API_KEY)
         
         # Initialize connection pool
         self.connection_pool = get_connection_pool()
 
     @activity.defn
-    def prompt_openai(self, prompt: str) -> str:
+    async def prompt_openai(self, prompt: str) -> str:
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-3.5-turbo",
+            response = await self.client.chat.completions.create(
+                model="gpt-4o",
                 messages=[
                     {"role": "user", "content": prompt}
                 ],
@@ -64,8 +65,8 @@ class OpenAIActivities:
             activity.logger.error(f"Error in OpenAI chat completion: {str(e)}")
             raise
     
-    @activity.defn
-    def save_conversation_to_db(self, user_id: Optional[int], conversation_history: List[Tuple[str, str]], summary: str = None) -> bool:
+    def _save_conversation_to_db_sync(self, user_id: Optional[int], conversation_history: List[Tuple[str, str]], summary: str = None) -> bool:
+        """Synchronous database operation to be called from async context."""
         conn = None
         try:
             # Get connection from pool instead of creating new one
@@ -139,6 +140,16 @@ class OpenAIActivities:
             # Return connection to pool instead of closing
             if conn:
                 self.connection_pool.putconn(conn)
+
+    @activity.defn
+    async def save_conversation_to_db(self, user_id: Optional[int], conversation_history: List[Tuple[str, str]], summary: str = None) -> bool:
+        """Async wrapper for database operations to prevent blocking."""
+        return await asyncio.to_thread(
+            self._save_conversation_to_db_sync, 
+            user_id, 
+            conversation_history, 
+            summary
+        )
 
 
 class DatabricksVectorClient:
@@ -353,8 +364,8 @@ async def web_search_realtime_info(request: WebSearchRequest) -> WebSearchRespon
         
         activity.logger.info(f"Starting web search for query: {request.query}")
         
-        # Initialize OpenAI client
-        client = OpenAI(api_key=cloud_config.OPENAI_API_KEY)
+        # Initialize async OpenAI client
+        client = AsyncOpenAI(api_key=cloud_config.OPENAI_API_KEY)
         
         # Prepare the search prompt
         search_prompt = f"""Please search the web for current information about: {request.query}
@@ -362,7 +373,7 @@ async def web_search_realtime_info(request: WebSearchRequest) -> WebSearchRespon
 Provide up to {request.max_results} relevant results and then give a comprehensive summary of the findings. Focus on the most recent and accurate information available."""
 
         # Use GPT-4o-search-preview for web search
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model="gpt-4o-search-preview",
             messages=[
                 {

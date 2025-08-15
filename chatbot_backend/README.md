@@ -30,8 +30,8 @@ Production-ready with cloud configuration management and environment variables.
 
 - **Temporal Workflows**: Durable, scalable conversation management with enhanced tool integration
 - **PostgreSQL (Neon)**: Persistent conversation storage with connection pooling  
-- **OpenAI GPT-3.5**: AI-powered chat responses
-- **OpenAI GPT-4o-search-preview**: Real-time web search capabilities
+- **OpenAI GPT-4o-mini**: AI-powered chat responses
+- **OpenAI -4o-search-preview**: Real-time web search capabilities
 - **Databricks Vector Search**: Company information retrieval and matching
 - **Smart Intent Detection**: Automatic tool selection based on user queries
 - **Docker**: Containerized deployment with scaling configuration

@@ -252,36 +252,55 @@ class SignalQueryOpenAIWorkflow:
                 )
             )
             
-            workflow.logger.info(f"Agent tool selection: should_use_tools={tool_selection.should_use_tools}, "
-                               f"selected {len(tool_selection.selected_tools)} tools, "
-                               f"confidence={tool_selection.confidence_score}")
+            # Handle both dict and object types from Temporal
+            if isinstance(tool_selection, dict):
+                should_use_tools = tool_selection.get('should_use_tools', False)
+                selected_tools = tool_selection.get('selected_tools', [])
+                confidence_score = tool_selection.get('confidence_score', 0.0)
+                reasoning = tool_selection.get('reasoning', '')
+            else:
+                should_use_tools = tool_selection.should_use_tools
+                selected_tools = tool_selection.selected_tools
+                confidence_score = tool_selection.confidence_score
+                reasoning = tool_selection.reasoning
+            
+            workflow.logger.info(f"Agent tool selection: should_use_tools={should_use_tools}, "
+                               f"selected {len(selected_tools)} tools, "
+                               f"confidence={confidence_score}")
             
             # If no tools should be used, return empty context
-            if not tool_selection.should_use_tools or not tool_selection.selected_tools:
+            if not should_use_tools or not selected_tools:
                 workflow.logger.info("Agent determined no tools needed")
                 return ""
             
             # Execute selected tools
             tool_results = []
-            for tool in tool_selection.selected_tools:
+            for tool in selected_tools:
                 try:
-                    if tool.tool_type == ToolType.DATABRICKS_SEARCH:
+                    # Handle both dict and object types for tools
+                    if isinstance(tool, dict):
+                        tool_type = tool.get('tool_type')
+                    else:
+                        tool_type = tool.tool_type
+                    
+                    if tool_type == ToolType.DATABRICKS_SEARCH or tool_type == 'databricks_search':
                         result = await self._execute_databricks_search(tool, prompt)
                         if result:
                             tool_results.append(result)
                     
-                    elif tool.tool_type == ToolType.WEB_SEARCH:
+                    elif tool_type == ToolType.WEB_SEARCH or tool_type == 'web_search':
                         result = await self._execute_web_search(tool, prompt)
                         if result:
                             tool_results.append(result)
                     
                 except Exception as e:
-                    workflow.logger.error(f"Error executing {tool.tool_type.value}: {str(e)}")
-                    tool_results.append(f"{tool.tool_type.value} search encountered an error, proceeding with general response.")
+                    tool_type_str = tool_type if isinstance(tool_type, str) else tool_type.value if hasattr(tool_type, 'value') else str(tool_type)
+                    workflow.logger.error(f"Error executing {tool_type_str}: {str(e)}")
+                    tool_results.append(f"{tool_type_str} search encountered an error, proceeding with general response.")
             
             # Return combined tool results
             if tool_results:
-                return f"Tool Selection Reasoning: {tool_selection.reasoning}\n\n" + "\n\n".join(tool_results)
+                return f"Tool Selection Reasoning: {reasoning}\n\n" + "\n\n".join(tool_results)
             else:
                 return ""
                 
@@ -293,8 +312,12 @@ class SignalQueryOpenAIWorkflow:
         """Execute Databricks search based on agent selection."""
         workflow.logger.info("Executing agent-selected Databricks search")
         
-        # Extract parameters from agent selection
-        params = tool_selection.parameters
+        # Extract parameters from agent selection (handle both dict and object)
+        if isinstance(tool_selection, dict):
+            params = tool_selection.get("parameters", {})
+        else:
+            params = tool_selection.parameters
+        
         query_text = params.get("query_text", original_prompt)
         num_results = params.get("num_results", 5)
         
@@ -348,8 +371,12 @@ class SignalQueryOpenAIWorkflow:
         """Execute web search based on agent selection."""
         workflow.logger.info("Executing agent-selected web search")
         
-        # Extract query from agent selection or use original prompt
-        params = tool_selection.parameters
+        # Extract query from agent selection or use original prompt (handle both dict and object)
+        if isinstance(tool_selection, dict):
+            params = tool_selection.get("parameters", {})
+        else:
+            params = tool_selection.parameters
+            
         query = params.get("query", original_prompt)
         
         # Create web search request
