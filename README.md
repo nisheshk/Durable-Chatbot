@@ -143,6 +143,11 @@ source .env.cloud && python worker_local.py
 ```bash
 cd chatbot_backend
 source .env.cloud && python load_test.py
+
+# Enhanced scalability testing with configurable parameters
+source .env.cloud && python test_scalability_simple.py
+source .env.cloud && python test_scalability_simple.py --sessions 20 --messages 3
+source .env.cloud && python test_scalability_simple.py --sessions 100 --messages 5 --timeout 120
 ```
 
 ## 🏗️ Project Architecture
@@ -161,7 +166,7 @@ chatbot/
 │   ├── worker_cloud.py             # Production worker (Temporal Cloud)
 │   ├── worker_local.py             # Development worker
 │   ├── client_cloud.py             # Workflow execution client
-│   ├── load_test.py                # Performance testing
+│   ├── test_scalability_simple.py  # Enhanced scalability testing
 │   ├── test_enhanced_features.py   # Feature test suite
 │   └── docker-compose.yml          # Scalable deployment
 ├── web-ui/                         # Next.js frontend

@@ -95,6 +95,11 @@ docker-compose up -d --scale chatbot-worker=5
 ```bash
 cd chatbot_backend
 source .env.cloud && python load_test.py
+
+# Enhanced scalability testing with configurable parameters
+source .env.cloud && python test_scalability_simple.py
+source .env.cloud && python test_scalability_simple.py --sessions 20 --messages 3
+source .env.cloud && python test_scalability_simple.py --sessions 100 --messages 5 --timeout 120
 ```
 
 ### Web UI (Next.js with Authentication)
@@ -208,9 +213,10 @@ chatbot/
 │   ├── shared/               # Database models and utilities
 │   ├── worker_cloud.py       # Production worker (Temporal Cloud)
 │   ├── worker_local.py       # Development worker
-│   ├── client_cloud.py       # Workflow execution client
-│   ├── load_test.py          # Performance testing
-│   └── docker-compose.yml    # Scalable deployment
+│   ├── client_cloud.py             # Workflow execution client
+│   ├── load_test.py                # Performance testing
+│   ├── test_scalability_simple.py  # Enhanced scalability testing
+│   └── docker-compose.yml          # Scalable deployment
 ├── web-ui/                   # Next.js frontend with auth
 │   ├── src/app/api/          # API routes (auth, chat)
 │   ├── src/components/       # React components
