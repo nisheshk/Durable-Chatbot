@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  chatbot-worker:
+    build: .
+    environment:
+      # Scaling configuration
+      - MAX_CONCURRENT_ACTIVITIES=20
+      - MAX_CONCURRENT_WORKFLOW_TASKS=10
+      - MAX_CONCURRENT_ACTIVITY_TASKS=20
+      
+      # Database pool settings
+      - DB_POOL_SIZE=20
+      - DB_MAX_OVERFLOW=30
+      
+      # Chatbot configuration
+      - INACTIVITY_TIMEOUT_MINUTES=5
+      - MAX_TOKENS=512
+      - TEMPERATURE=0.1
+      - TOP_P=0.2
+      
+    deploy:
+      replicas: 3  # Run 3 worker instances for load handling
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    
+    restart: unless-stopped
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  default:
+    driver: bridge
