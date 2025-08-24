@@ -66,11 +66,16 @@ class CloudConfig:
     @classmethod
     def get_temporal_connection_config(cls) -> dict:
         """Get Temporal Cloud connection configuration."""
+        from temporalio.client import TLSConfig
+        
         return {
             "target_host": cls.TEMPORAL_CLOUD_ADDRESS,
             "namespace": cls.TEMPORAL_CLOUD_NAMESPACE,
-            "api_key": cls.TEMPORAL_CLOUD_API_KEY,
-            "tls": True,
+            "tls": TLSConfig(),
+            "rpc_metadata": {
+                "temporal-namespace": cls.TEMPORAL_CLOUD_NAMESPACE,
+                "authorization": f"Bearer {cls.TEMPORAL_CLOUD_API_KEY}"
+            }
         }
 
 
